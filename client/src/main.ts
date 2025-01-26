@@ -35,12 +35,14 @@ API Calls
 */
 
 const fetchWeather = async (cityName: string) => {
-  const response = await fetch('/api/weather/', {
-    method: 'POST',
+  // Encode the city name to handle spaces and special characters
+  const encodedCityName = encodeURIComponent(cityName);
+  
+  const response = await fetch(`/api/weather?city=${encodedCityName}`, {
+    method: 'GET',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ cityName }),
   });
 
   const weatherData = await response.json();
@@ -50,6 +52,23 @@ const fetchWeather = async (cityName: string) => {
   renderCurrentWeather(weatherData[0]);
   renderForecast(weatherData.slice(1));
 };
+
+// const fetchWeather = async (cityName: string) => {
+//   const response = await fetch('/api/weather/', {
+//     method: 'POST',
+//     headers: {
+//       'Content-Type': 'application/json',
+//     },
+//     body: JSON.stringify({ cityName }),
+//   });
+
+//   const weatherData = await response.json();
+
+//   console.log('weatherData: ', weatherData);
+
+//   renderCurrentWeather(weatherData[0]);
+//   renderForecast(weatherData.slice(1));
+// };
 
 const fetchSearchHistory = async () => {
   const history = await fetch('/api/weather/history', {
