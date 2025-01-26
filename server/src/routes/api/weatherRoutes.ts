@@ -5,8 +5,6 @@ import WeatherService from '../../service/weatherService.js';
 const router = Router();
 
 
-// TODO: POST Request with city name to retrieve weather data
-
 router.get('/', async (req: Request, res: Response) => {
   try {
     const cityName = req.query.city as string;
@@ -19,34 +17,36 @@ router.get('/', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'City not found' });
     }
 
-    const weatherData = await WeatherService.getWeatherData(cityCoordinates);
-    await HistoryService.saveCity(cityName);
-    res.json(weatherData);
+    const weatherData = await WeatherService.getWeatherData(cityCoordinates, cityName);
+    await HistoryService.addCity(cityName);
+    return res.json(weatherData);
 
   } catch (error) {
     console.error('Error fetching weather data:', error);
-    res.status(500).json({ error: 'Failed to fetch weather data' });
+    return res.status(500).json({ error: 'Failed to fetch weather data' });
   }
 });
-// router.get('/', (req, res) => {
 
-
-//   // TODO: GET weather data from city name
-//   // TODO: save city to search history
-
-// });
-
-// DONE: GET search history
-router.get('/history', async (req: Request, res: Response) => {
-try {
-  const cities = await HistoryService.getCities();
-  res.json(cities);
-} catch (error) {
-  console.log(error);
-  res.status(500).json(error);
-}});
+router.get('/history', async (_req: Request, res: Response) => {
+  try {
+    const cities = await HistoryService.getCities();
+    res.json(cities);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch search history' });
+  }
+});
 
 // * BONUS TODO: DELETE city from search history
-router.delete('/history/:id', async (req, res) => {});
+router.delete('/history/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    await HistoryService.removeCity(id);
+    res.status(204).end();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to remove city from search history' });
+  }
+});
 
 export default router;
