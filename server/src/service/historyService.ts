@@ -8,7 +8,7 @@ class City {
 
   constructor(name: string) {
     this.name = name;
-    this.id = id;
+    this.id = uuidv4();
   }
 }
 
@@ -25,6 +25,13 @@ class HistoryService {
   private async write(cities: City[]) {
     return await fs.writeFile('searchHistory.json', JSON.stringify(cities, null, '\t'));
   }
+
+  async addCity(city: string) {
+    const cities = await this.getCities();
+    const newCity = new City(city);
+    cities.push(newCity);
+    await this.write(cities);
+  }
   
   async getCities() {
     return await this.read().then((cities) => {
@@ -39,15 +46,12 @@ class HistoryService {
     return parsedCities;
     })
   }
+  async removeCity(id: string) {
+    const cities = await this.getCities();
+    const filteredCities = cities.filter((city) => city.id!== id);
+    await this.write(filteredCities);
+  }
 
 }
 
 export default new HistoryService();
-
-  // DONE: Define a read method that reads from the searchHistory.json file
-  // DONE: Define a write method that writes the updated cities array to the searchHistory.json file
-  // DONE: Define a getCities method that reads the cities from the searchHistory.json file and returns them as an array of City objects
-  // TODO Define an addCity method that adds a city to the searchHistory.json file
-  // async addCity(city: string) {}
-  // * BONUS TODO: Define a removeCity method that removes a city from the searchHistory.json file
-  // async removeCity(id: string) {}

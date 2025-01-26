@@ -1,5 +1,5 @@
-import fs from 'node:fs/promises';
-import { v4 as uuidv4 } from 'uuid';
+// import fs from 'node:fs/promises';
+// import { v4 as uuidv4 } from 'uuid';
 
 import dotenv from 'dotenv';
 dotenv.config();
@@ -14,18 +14,22 @@ interface ICoordinates {
 interface IWeather {
   date: string;
   icon: string;
-  temp: number;
-  wind: number;
+  iconDescription: string;
+  tempF: number;
+  windSpeed: number;
   humidity: number;
+  cityName: string;
 }
 // TODO: Define a class for the Weather object
 class Weather implements IWeather {
   constructor(
     public date: string,
     public icon: string,
-    public temp: number,
-    public wind: number,
-    public humidity: number
+    public iconDescription: string,
+    public tempF: number,
+    public windSpeed: number,
+    public humidity: number,
+    public cityName: string
   ) {}
 }
 
@@ -36,49 +40,73 @@ class WeatherService {
   private apiKey?: string;
 
   constructor() {
-    this.baseURL = process.env.OPEN_WEATHER_MAP_BASE_URL || 'https://api.openweathermap.org';
-    this.apiKey = process.env.OPEN_WEATHER_MAP_API_KEY || '';
+      this.baseURL = process.env.OPEN_WEATHER_MAP_BASE_URL || 'http://api.openweathermap.org';
+      this.apiKey = process.env.OPEN_WEATHER_MAP_API_KEY || '';
   }
 
+  private async weatherForecast(weatherData: any[], cityName: string): Promise<IWeather[]>  {
+    console.log('City name in weatherForecast:', cityName); 
+    const weatherForecastArray: IWeather[] = weatherData.map((weather) => {
+      return new Weather(
+        weather.dt_txt,
+        weather.weather[0].icon,
+        weather.weather[0].description,
+        weather.main.temp,
+        weather.wind.speed,
+        weather.main.humidity,
+        cityName // Add this line to include the city name
+      );
+    });
 
-  async getWeatherData(coordinates: ICoordinates): Promise<IWeather> {
+    const dailyForecast = weatherForecastArray.filter((forecast, index, fullArray) => 
+      index === fullArray.findIndex((t) => t.date.split(' ')[0] === forecast.date.split(' ')[0])
+    );
+    return dailyForecast.slice(0, 6);
+  };
+
+  async getWeatherData(coordinates: ICoordinates, cityName: string): Promise<IWeather[]> {
     try {
-      const weatherData = await fetch(`${this.baseURL}/data/2.5/forecast?lat=${coordinates.latitude}&lon=${coordinates.longitude}&appid=${this.apiKey}&units=metric`);
+      // Remove this line: this.cityName = cityName;
+      const weatherData = await fetch(`${this.baseURL}/data/2.5/forecast?lat=${coordinates.latitude}&lon=${coordinates.longitude}&appid=${this.apiKey}&units=imperial`);
       const weatherDataJson = await weatherData.json();
-      if (weatherDataJson > 0) {
-        return new Weather( //This will return the current weather, how do I get the forecast data for the other 5 days?
-          weatherDataJson.list[0].dt_txt,
-          weatherDataJson.list[0].weather.icon,
-          weatherDataJson.list[0].main.temp,
-          weatherDataJson.list[0].wind.speed,
-          weatherDataJson.list[0].main.humidity
-        )
-      } else {
-        throw new Error('Failed to fetch weather data');
-      }
+  
+      const weatherForecast = await this.weatherForecast(weatherDataJson.list, cityName);
+      return weatherForecast;
+  
     } catch (error) {
-      console.error('Failed to fetch weather data');
+      console.error('Failed to fetch weather data:', error);
       throw new Error('Failed to fetch weather data');
     }
   }
 
-  async convertCityToCoordinates(cityName: string): Promise<ICoordinates> {
-    try {
-      const cityData = await fetch(`${this.baseURL}/geo/1.0/direct?q=${cityName}&appid=${this.apiKey}`);
-      const cityDataJson = await cityData.json();
-      if (cityDataJson.length > 0) {
-        return {
-          latitude: cityDataJson[0].lat,
-          longitude: cityDataJson[0].lon
-        };
-      } else {
-        throw new Error('City not found');
-      }
-    } catch (error) {
-      console.error('Failed to fetch city data');
-      throw new Error('Failed to fetch city data');
+async convertCityToCoordinates(cityName: string): Promise<ICoordinates> {
+  try {
+    const encodedCityName = encodeURIComponent(cityName);
+    const url = `${this.baseURL}/geo/1.0/direct?q=${encodedCityName}&limit=1&appid=${this.apiKey}`;
+    
+    console.log('Fetching from URL:', url); // Log the URL for debugging
+
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
+    
+    const cityDataJson = await response.json();
+    
+    if (cityDataJson.length > 0) {
+      return {
+        latitude: cityDataJson[0].lat,
+        longitude: cityDataJson[0].lon
+      };
+    } else {
+      throw new Error('City not found');
+    }
+  } catch (error) {
+    console.error('Failed to fetch city data:', error);
+    throw new Error('Failed to fetch city data');
   }
+}
 }
 
 
